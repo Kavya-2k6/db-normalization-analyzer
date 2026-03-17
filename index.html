@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DB Normalization Tool</title>
+  <!-- using bootstrap because why reinvent the wheel -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
+  <style>
+    body {
+      background-color: #f0f2f5;
+      font-family: Arial, sans-serif;
+    }
+
+    .navbar {
+      background-color: #2c3e50;
+    }
+
+    .navbar-brand {
+      color: #1abc9c !important;
+      font-weight: bold;
+      font-size: 22px;
+    }
+
+    .navbar-text {
+      color: #aaa !important;
+      font-size: 13px;
+    }
+
+    .card {
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      background-color: #2c3e50;
+      color: white;
+      font-weight: bold;
+      border-radius: 8px 8px 0 0 !important;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #2c3e50;
+      border-left: 4px solid #1abc9c;
+      padding-left: 10px;
+      margin: 15px 0 10px 0;
+    }
+
+    .btn-primary {
+      background-color: #1abc9c;
+      border-color: #1abc9c;
+    }
+    .btn-primary:hover {
+      background-color: #17a589;
+      border-color: #17a589;
+    }
+
+    .step-card {
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      overflow: hidden;
+    }
+
+    .step-header {
+      background-color: #34495e;
+      color: white;
+      padding: 10px 15px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .step-header:hover {
+      background-color: #2c3e50;
+    }
+
+    .step-body {
+      padding: 15px;
+      background-color: #fff;
+    }
+
+    .badge-pass {
+      background-color: #27ae60;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .badge-fail {
+      background-color: #e74c3c;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .badge-info {
+      background-color: #2980b9;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    table th {
+      background-color: #2c3e50;
+      color: white;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    table td {
+      padding: 8px 12px;
+      border: 1px solid #dee2e6;
+    }
+
+    table tr:nth-child(even) td {
+      background-color: #f8f9fa;
+    }
+
+    .attr-tag {
+      display: inline-block;
+      background-color: #eaf4fb;
+      border: 1px solid #aed6f1;
+      color: #1a5276;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      margin: 2px;
+      font-family: "Courier New", monospace;
+    }
+
+    .attr-tag.pk {
+      background-color: #d5f5e3;
+      border-color: #82e0aa;
+      color: #1e8449;
+      font-weight: bold;
+    }
+
+    .violation-row td { background-color: #fdf2f2 !important; border-left: 3px solid #e74c3c; }
+    .ok-row td { background-color: #f0fdf4 !important; border-left: 3px solid #27ae60; }
+
+    .hint-text {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    #errorDiv { display: none; }
+    #progressDiv { display: none; margin-bottom: 20px; }
+    #resultBox { display: none; }
+
+    .collapse-arrow { font-size: 12px; }
+
+    footer {
+      background-color: #2c3e50;
+      color: #aaa;
+      text-align: center;
+      padding: 14px;
+      margin-top: 30px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg">
+  <div class="container">
+    <span class="navbar-brand">🗃️ DB Normalizer</span>
+    <span class="navbar-text ms-auto">DBMS Innovative Assignment 2024-25 | Option 2</span>
+  </div>
+</nav>
+
+<div class="container mt-4">
+
+  <div class="mb-4">
+    <h4 style="color:#2c3e50; font-weight:bold;">Step-by-Step Database Normalization Tool</h4>
+    <p class="text-muted" style="font-size:14px;">
+      Enter your relational schema and functional dependencies below. The tool will automatically compute
+      closures, candidate keys, and check 1NF → 2NF → 3NF → BCNF.
+    </p>
+  </div>
+
+  <!-- INPUT CARD -->
+  <div class="card">
+    <div class="card-header">📥 Input — Relational Schema</div>
+    <div class="card-body">
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-bold">Relation Name</label>
+          <input type="text" class="form-control" id="relName" placeholder="e.g. STUDENT_COURSE" />
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-bold">Primary Key Attributes <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="primaryKey" placeholder="e.g. StudentID, CourseID" />
+          <div class="hint-text">Comma separated. For composite PK enter multiple attributes.</div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">All Attributes <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="attrs"
+          placeholder="e.g. StudentID, StudentName, CourseID, CourseName, InstructorID, InstructorName, Grade" />
+        <div class="hint-text">Enter all attributes separated by commas.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">Functional Dependencies <span class="text-danger">*</span></label>
+        <textarea class="form-control" id="fds" rows="5"
+          placeholder="StudentID -> StudentName&#10;CourseID -> CourseName, InstructorID&#10;InstructorID -> InstructorName&#10;StudentID, CourseID -> Grade"></textarea>
+        <div class="hint-text">One FD per line. Format: <code>A, B -> C, D</code></div>
+      </div>
+
+      <button class="btn btn-primary me-2" onclick="runNormalization()">▶ Run Normalization</button>
+      <button class="btn btn-secondary me-2" onclick="clearAll()">Clear</button>
+      <br><br>
+      <small class="text-muted me-2">Load example: </small>
+      <button class="btn btn-outline-secondary btn-sm me-2" onclick="loadExample1()">Example 1: Student-Course</button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="loadExample2()">Example 2: Employee-Project</button>
+
+    </div>
+  </div>
+
+  <div class="alert alert-danger" id="errorDiv"></div>
+
+  <div id="progressDiv">
+    <div class="progress" style="height: 22px; border-radius: 6px;">
+      <div class="progress-bar bg-success" id="progressBar" role="progressbar" style="width: 0%;">
+        Initializing...
+      </div>
+    </div>
+  </div>
+
+  <div id="resultBox"></div>
+
+</div>
+
+<footer>
+  DB Normalization Tool &nbsp;|&nbsp; Built using HTML + Bootstrap + JavaScript &nbsp;|&nbsp; DBMS Lab Assignment 2024-25
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+// -------------------------------------------------------
+// INPUT PARSING
+// -------------------------------------------------------
+function parseInput() {
+  const relName = document.getElementById('relName').value.trim() || 'R';
+  const attrsRaw = document.getElementById('attrs').value.trim();
+  const pkRaw = document.getElementById('primaryKey').value.trim();
+  const fdsRaw = document.getElementById('fds').value.trim();
+
+  if (!attrsRaw || !pkRaw) return null;
+
+  const attrs = attrsRaw.split(',').map(a => a.trim()).filter(Boolean);
+  const pk = pkRaw.split(',').map(a => a.trim()).filter(Boolean);
+
+  const fds = [];
+  fdsRaw.split('\n').forEach(line => {
+    line = line.trim();
+    if (!line) return;
+    const parts = line.split('->');
+    if (parts.length < 2) return;
+    const lhs = parts[0].split(',').map(a => a.trim()).filter(Boolean);
+    const rhs = parts[1].split(',').map(a => a.trim()).filter(Boolean);
+    if (lhs.length && rhs.length) fds.push({ lhs, rhs });
+  });
+
+  return { relName, attrs, pk, fds };
+}
+
+// -------------------------------------------------------
+// CORE LOGIC
+// -------------------------------------------------------
+
+function computeClosure(allAttrs, fds, seedAttrs) {
+  let cl = new Set(seedAttrs);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const fd of fds) {
+      if (fd.lhs.every(a => cl.has(a))) {
+        for (const a of fd.rhs) {
+          if (!cl.has(a)) { cl.add(a); changed = true; }
+        }
+      }
+    }
+  }
+  return [...cl].sort();
+}
+
+function isSuperkey(allAttrs, fds, subset) {
+  const cl = computeClosure(allAttrs, fds, subset);
+  return allAttrs.every(a => cl.includes(a));
+}
+
+function findCandidateKeys(allAttrs, fds) {
+  const keys = [];
+  const n = Math.min(allAttrs.length, 10);
+  for (let mask = 1; mask < (1 << n); mask++) {
+    const subset = [];
+    for (let i = 0; i < n; i++) {
+      if (mask & (1 << i)) subset.push(allAttrs[i]);
+    }
+    if (isSuperkey(allAttrs, fds, subset)) {
+      let minimal = true;
+      for (const ck of keys) {
+        if (ck.every(a => subset.includes(a))) { minimal = false; break; }
+      }
+      if (minimal) {
+        for (let i = keys.length - 1; i >= 0; i--) {
+          if (subset.every(a => keys[i].includes(a))) keys.splice(i, 1);
+        }
+        keys.push(subset);
+      }
+    }
+  }
+  return keys.length ? keys : [allAttrs];
+}
+
+function findPartialDeps(allAttrs, pk, fds) {
+  if (pk.length <= 1) return [];
+  const result = [];
+  for (const fd of fds) {
+    const isProperSubset = fd.lhs.every(a => pk.includes(a)) && fd.lhs.length < pk.length;
+    if (isProperSubset) {
+      for (const rhs of fd.rhs) {
+        if (!pk.includes(rhs)) {
+          result.push({ lhs: fd.lhs, rhs: rhs });
+        }
+      }
+    }
+  }
+  return result;
+}
+
+function findTransitiveDeps(allAttrs, pk, candidateKeys, fds) {
+  const primeAttrs = new Set(candidateKeys.flat());
+  const result = [];
+  for (const fd of fds) {
+    if (isSuperkey(allAttrs, fds, fd.lhs)) continue;
+    for (const rhs of fd.rhs) {
+      if (!primeAttrs.has(rhs)) {
+        result.push({ lhs: fd.lhs, rhs: rhs });
+      }
+    }
+  }
+  return result;
+}
+
+function findBCNFViolations(allAttrs, fds) {
+  return fds.filter(fd => !isSuperkey(allAttrs, fds, fd.lhs));
+}
+
+function decomposeRelation(relName, allAttrs, violatingFDs, fds, label) {
+  const newRelations = [];
+  let remaining = [...allAttrs];
+  for (let i = 0; i < violatingFDs.length; i++) {
+    const vfd = violatingFDs[i];
+    const rhsArr = Array.isArray(vfd.rhs) ? vfd.rhs : [vfd.rhs];
+    const newAttrs = [...new Set([...vfd.lhs, ...rhsArr])];
+    const newFDs = fds.filter(f =>
+      f.lhs.every(a => newAttrs.includes(a)) && f.rhs.every(a => newAttrs.includes(a))
+    );
+    newRelations.push({ name: relName + '_' + label + (i + 1), attrs: newAttrs, pk: vfd.lhs, fds: newFDs });
+    remaining = remaining.filter(a => !rhsArr.includes(a) || vfd.lhs.includes(a));
+  }
+  if (remaining.length > 1) {
+    const remFDs = fds.filter(f =>
+      f.lhs.every(a => remaining.includes(a)) && f.rhs.every(a => remaining.includes(a))
+    );
+    newRelations.push({ name: relName + '_MAIN', attrs: remaining, pk: remaining, fds: remFDs });
+  }
+  return newRelations;
+}
+
+// -------------------------------------------------------
+// HTML HELPERS
+// -------------------------------------------------------
+
+function attrTags(attrs, pk) {
+  return attrs.map(a => {
+    const isPK = pk.includes(a);
+    return `<span class="attr-tag ${isPK ? 'pk' : ''}">${isPK ? '🔑 ' : ''}${a}</span>`;
+  }).join(' ');
+}
+
+function fdTableHTML(fds) {
+  if (!fds.length) return '<p class="text-muted">No functional dependencies.</p>';
+  let rows = fds.map(fd =>
+    `<tr>
+      <td><code>{${fd.lhs.join(', ')}}</code></td>
+      <td style="text-align:center; width:40px;">→</td>
+      <td><code>{${fd.rhs.join(', ')}}</code></td>
+    </tr>`
+  ).join('');
+  return `<table>
+    <thead><tr><th>LHS (Determinant)</th><th></th><th>RHS (Dependent)</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+let stepCounter = 0;
+function makeStepCard(title, badgeHTML, bodyHTML) {
+  const id = 'step_' + (stepCounter++);
+  return `
+  <div class="step-card">
+    <div class="step-header" onclick="toggleStep('${id}')">
+      <span>${title} &nbsp; ${badgeHTML}</span>
+      <span class="collapse-arrow" id="arrow_${id}">▼</span>
+    </div>
+    <div class="step-body" id="${id}">
+      ${bodyHTML}
+    </div>
+  </div>`;
+}
+
+function toggleStep(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById('arrow_' + id);
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    arrow.textContent = '▼';
+  } else {
+    el.style.display = 'none';
+    arrow.textContent = '►';
+  }
+}
+
+function setProgress(pct, label) {
+  const bar = document.getElementById('progressBar');
+  bar.style.width = pct + '%';
+  bar.textContent = label;
+}
+
+// -------------------------------------------------------
+// MAIN FUNCTION
+// -------------------------------------------------------
+function runNormalization() {
+  document.getElementById('resultBox').style.display = 'none';
+  document.getElementById('resultBox').innerHTML = '';
+  document.getElementById('errorDiv').style.display = 'none';
+  stepCounter = 0;
+
+  const input = parseInput();
+  if (!input) {
+    document.getElementById('errorDiv').textContent = '❌ Please fill in all required fields (Attributes, Primary Key, and FDs).';
+    document.getElementById('errorDiv').style.display = 'block';
+    return;
+  }
+
+  const { relName, attrs, pk, fds } = input;
+
+  for (const k of pk) {
+    if (!attrs.includes(k)) {
+      document.getElementById('errorDiv').textContent = `❌ Primary key attribute "${k}" not found in attributes list.`;
+      document.getElementById('errorDiv').style.display = 'block';
+      return;
+    }
+  }
+
+  document.getElementById('progressDiv').style.display = 'block';
+  setProgress(10, 'Parsing input...');
+
+  let html = '';
+
+  // ---- STEP 0: Schema Overview ----
+  setProgress(20, 'Building schema...');
+  const candidateKeys = findCandidateKeys(attrs, fds);
+  const primeAttrs = [...new Set(candidateKeys.flat())].sort();
+  const nonPrimeAttrs = attrs.filter(a => !primeAttrs.includes(a));
+
+  const schemaBody = `
+    <div class="section-title">Relation Schema</div>
+    <div style="margin-bottom:10px;">
+      <strong>${relName}</strong> ( ${attrTags(attrs, pk)} )
+    </div>
+    <table>
+      <thead><tr><th>Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Total Attributes</td><td>${attrs.length}</td></tr>
+        <tr><td>Primary Key</td><td><code>{${pk.join(', ')}}</code></td></tr>
+        <tr><td>No. of FDs Given</td><td>${fds.length}</td></tr>
+      </tbody>
+    </table>
+    <div class="section-title">Functional Dependencies Given</div>
+    ${fdTableHTML(fds)}
+  `;
+  html += makeStepCard('Step 0 — Schema Overview', '<span class="badge-info">INPUT</span>', schemaBody);
+
+  // ---- STEP 1: Closures & Keys ----
+  setProgress(35, 'Computing closures...');
+
+  let closureRows = '';
+  const seen = new Set();
+  const seedSets = [...fds.map(f => f.lhs), pk];
+  for (const seed of seedSets) {
+    const key = [...seed].sort().join(',');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const cl = computeClosure(attrs, fds, seed);
+    const isSK = attrs.every(a => cl.includes(a));
+    const isCK = candidateKeys.some(ck => [...ck].sort().join(',') === [...seed].sort().join(','));
+    closureRows += `<tr class="${isCK ? 'ok-row' : ''}">
+      <td><code>{${seed.join(', ')}}</code></td>
+      <td><code>{${cl.join(', ')}}</code></td>
+      <td>${isSK ? '✅ Yes' : '❌ No'}</td>
+      <td>${isCK ? '<strong>✅ YES — CK</strong>' : '—'}</td>
+    </tr>`;
+  }
+
+  const keysBody = `
+    <div class="section-title">Attribute Closures</div>
+    <table>
+      <thead><tr><th>Attribute Set (X)</th><th>Closure X⁺</th><th>Superkey?</th><th>Candidate Key?</th></tr></thead>
+      <tbody>${closureRows}</tbody>
+    </table>
+    <div class="section-title">Candidate Keys</div>
+    ${candidateKeys.map((ck, i) => `<p>CK${i+1}: <code style="color:#1e8449; font-weight:bold;">{${ck.join(', ')}}</code></p>`).join('')}
+    <div class="section-title">Prime vs Non-Prime Attributes</div>
+    <table>
+      <thead><tr><th>Type</th><th>Attributes</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Prime</strong> (part of some CK)</td><td>${primeAttrs.map(a => `<span class="attr-tag pk">${a}</span>`).join(' ')}</td></tr>
+        <tr><td><strong>Non-Prime</strong></td><td>${nonPrimeAttrs.map(a => `<span class="attr-tag">${a}</span>`).join(' ') || '<em>None</em>'}</td></tr>
+      </tbody>
+    </table>
+  `;
+  html += makeStepCard('Step 1 — Closure Computation & Candidate Keys', '<span class="badge-info">ANALYSIS</span>', keysBody);
+
+  // ---- STEP 2: 1NF ----
+  setProgress(50, 'Checking 1NF...');
+  const nf1Body = `
+    <p><span class="badge-pass">✓ IN 1NF</span></p><br>
+    <table>
+      <thead><tr><th>Condition</th><th>Status</th><th>Explanation</th></tr></thead>
+      <tbody>
+        <tr class="ok-row"><td>All values are atomic</td><td>✅ Pass</td><td>No multi-valued or composite attributes</td></tr>
+        <tr class="ok-row"><td>No repeating groups</td><td>✅ Pass</td><td>Each row-column intersection has exactly one value</td></tr>
+        <tr class="ok-row"><td>Primary key defined</td><td>✅ Pass</td><td><code>{${pk.join(', ')}}</code> uniquely identifies each tuple</td></tr>
+      </tbody>
+    </table>
+    <br>
+    <p><strong>Conclusion:</strong> <span style="color:#27ae60;">${relName} satisfies 1NF.</span> Proceeding to check 2NF.</p>
+  `;
+  html += makeStepCard('Step 2 — First Normal Form (1NF)', '<span class="badge-pass">✓ PASS</span>', nf1Body);
+
+  // ---- STEP 3: 2NF ----
+  setProgress(65, 'Checking 2NF...');
+  const partialDeps = findPartialDeps(attrs, pk, fds);
+  const is2NF = partialDeps.length === 0 || pk.length === 1;
+
+  let nf2Body = '';
+  let nf2Badge = '';
+
+  if (pk.length === 1) {
+    nf2Badge = '<span class="badge-pass">✓ PASS</span>';
+    nf2Body = `
+      <p><span class="badge-pass">✓ IN 2NF</span></p><br>
+      <p>Primary key <code>{${pk[0]}}</code> is a single attribute. Partial dependencies can only occur with a 
+      composite PK, so 2NF is automatically satisfied.</p>
+    `;
+  } else if (is2NF) {
+    nf2Badge = '<span class="badge-pass">✓ PASS</span>';
+    nf2Body = `
+      <p><span class="badge-pass">✓ IN 2NF</span></p><br>
+      <p>No partial dependencies found. All non-prime attributes fully depend on the entire PK <code>{${pk.join(', ')}}</code>.</p>
+    `;
+  } else {
+    nf2Badge = '<span class="badge-fail">✗ FAIL</span>';
+    let pdRows = partialDeps.map(pd => `<tr class="violation-row">
+      <td><code>{${pd.lhs.join(', ')}}</code> → <code>${pd.rhs}</code></td>
+      <td>Yes — proper subset of PK</td>
+      <td>Yes — non-prime</td>
+      <td>❌ Partial Dependency</td>
+    </tr>`).join('');
+
+    nf2Body = `
+      <p><span class="badge-fail">✗ VIOLATES 2NF</span></p>
+      <p class="mt-2"><strong>${partialDeps.length} partial dependenc${partialDeps.length > 1 ? 'ies' : 'y'} found:</strong></p>
+      <table>
+        <thead><tr><th>FD</th><th>LHS ⊂ PK?</th><th>RHS Non-Prime?</th><th>Result</th></tr></thead>
+        <tbody>${pdRows}</tbody>
+      </table>
+      <div class="section-title">2NF Decomposition</div>
+      <p>Separate these partial dependencies into their own relations:</p>
+    `;
+
+    const decomposed = decomposeRelation(relName, attrs, partialDeps.map(p => ({ lhs: p.lhs, rhs: [p.rhs] })), fds, 'R');
+    for (const r of decomposed) {
+      nf2Body += `<div style="margin:8px 0; padding:10px; background:#f8f9fa; border:1px solid #dee2e6; border-radius:5px;">
+        <strong>${r.name}</strong> ( ${attrTags(r.attrs, r.pk)} )
+      </div>`;
+    }
+  }
+
+  nf2Body += `<br><div style="background:#eaf4fb; padding:10px; border-radius:5px; font-size:13px;">
+    <strong>2NF Rule:</strong> A relation is in 2NF if it is in 1NF AND every non-prime attribute is 
+    <em>fully</em> functionally dependent on the entire primary key (no partial dependencies).
+  </div>`;
+
+  html += makeStepCard('Step 3 — Second Normal Form (2NF)', nf2Badge, nf2Body);
+
+  // ---- STEP 4: 3NF ----
+  setProgress(80, 'Checking 3NF...');
+  const transitiveDeps = findTransitiveDeps(attrs, pk, candidateKeys, fds);
+  const is3NF = transitiveDeps.length === 0;
+
+  let nf3Body = '';
+  let nf3Badge = '';
+
+  if (is3NF) {
+    nf3Badge = '<span class="badge-pass">✓ PASS</span>';
+    nf3Body = `
+      <p><span class="badge-pass">✓ IN 3NF</span></p><br>
+      <p>No transitive dependencies found. For every FD X → A, either X is a superkey or A is a prime attribute.</p>
+    `;
+  } else {
+    nf3Badge = '<span class="badge-fail">✗ FAIL</span>';
+    let tdRows = transitiveDeps.map(td => `<tr class="violation-row">
+      <td><code>{${td.lhs.join(', ')}}</code> → <code>${td.rhs}</code></td>
+      <td>❌ Not a superkey</td>
+      <td>❌ Not prime</td>
+      <td>Transitive Dependency</td>
+    </tr>`).join('');
+
+    nf3Body = `
+      <p><span class="badge-fail">✗ VIOLATES 3NF</span></p>
+      <p class="mt-2"><strong>${transitiveDeps.length} transitive dependenc${transitiveDeps.length > 1 ? 'ies' : 'y'} found:</strong></p>
+      <table>
+        <thead><tr><th>FD</th><th>Is LHS a Superkey?</th><th>Is RHS Prime?</th><th>Verdict</th></tr></thead>
+        <tbody>${tdRows}</tbody>
+      </table>
+      <div class="section-title">3NF Decomposition</div>
+      <p>Move transitive dependencies to separate relations:</p>
+    `;
+    const decomposed3 = decomposeRelation(relName, attrs, transitiveDeps.map(t => ({ lhs: t.lhs, rhs: [t.rhs] })), fds, 'R');
+    for (const r of decomposed3) {
+      nf3Body += `<div style="margin:8px 0; padding:10px; background:#f8f9fa; border:1px solid #dee2e6; border-radius:5px;">
+        <strong>${r.name}</strong> ( ${attrTags(r.attrs, r.pk)} )
+      </div>`;
+    }
+  }
+
+  nf3Body += `<br><div style="background:#eaf4fb; padding:10px; border-radius:5px; font-size:13px;">
+    <strong>3NF Rule:</strong> A relation is in 3NF if it is in 2NF AND for every non-trivial FD X → A, 
+    either X is a superkey OR A is a prime attribute.
+  </div>`;
+
+  html += makeStepCard('Step 4 — Third Normal Form (3NF)', nf3Badge, nf3Body);
+
+  // ---- STEP 5: BCNF ----
+  setProgress(92, 'Checking BCNF...');
+  const bcnfViolations = findBCNFViolations(attrs, fds);
+  const isBCNF = bcnfViolations.length === 0;
+
+  let bcnfBody = '';
+  let bcnfBadge = '';
+
+  if (isBCNF) {
+    bcnfBadge = '<span class="badge-pass">✓ PASS</span>';
+    bcnfBody = `
+      <p><span class="badge-pass">✓ IN BCNF</span></p><br>
+      <p>For every non-trivial FD X → Y, X is a superkey. No further decomposition needed.</p>
+    `;
+  } else {
+    bcnfBadge = '<span class="badge-fail">✗ FAIL</span>';
+    let bcnfRows = bcnfViolations.map(v => {
+      const cl = computeClosure(attrs, fds, v.lhs);
+      return `<tr class="violation-row">
+        <td><code>{${v.lhs.join(', ')}}</code> → <code>{${v.rhs.join(', ')}}</code></td>
+        <td><code>{${cl.join(', ')}}</code></td>
+        <td>❌ Not a superkey</td>
+        <td>BCNF Violation</td>
+      </tr>`;
+    }).join('');
+
+    bcnfBody = `
+      <p><span class="badge-fail">✗ VIOLATES BCNF</span></p>
+      <p class="mt-2"><strong>${bcnfViolations.length} violation${bcnfViolations.length > 1 ? 's' : ''} found:</strong></p>
+      <table>
+        <thead><tr><th>FD</th><th>LHS Closure</th><th>LHS is Superkey?</th><th>Status</th></tr></thead>
+        <tbody>${bcnfRows}</tbody>
+      </table>
+      <div class="section-title">BCNF Decomposition</div>
+    `;
+    const decomposedB = decomposeRelation(relName, attrs, bcnfViolations, fds, 'BCNF_R');
+    for (const r of decomposedB) {
+      bcnfBody += `<div style="margin:8px 0; padding:10px; background:#f8f9fa; border:1px solid #dee2e6; border-radius:5px;">
+        <strong>${r.name}</strong> ( ${attrTags(r.attrs, r.pk)} )
+      </div>`;
+    }
+  }
+
+  bcnfBody += `<br><div style="background:#eaf4fb; padding:10px; border-radius:5px; font-size:13px;">
+    <strong>BCNF Rule:</strong> A relation is in BCNF if for every non-trivial FD X → Y, X must be a superkey. 
+    BCNF is stricter than 3NF.
+  </div>`;
+
+  html += makeStepCard('Step 5 — Boyce-Codd Normal Form (BCNF)', bcnfBadge, bcnfBody);
+
+  // ---- SUMMARY ----
+  setProgress(100, 'Done!');
+  const finalNF = isBCNF ? 'BCNF' : (is3NF ? '3NF' : (is2NF ? '2NF' : '1NF'));
+  const summaryBody = `
+    <table>
+      <thead><tr><th>Normal Form</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr class="ok-row"><td>1NF</td><td><span class="badge-pass">✓ PASS</span></td></tr>
+        <tr class="${is2NF ? 'ok-row' : 'violation-row'}"><td>2NF</td><td><span class="${is2NF ? 'badge-pass' : 'badge-fail'}">${is2NF ? '✓ PASS' : '✗ FAIL'}</span></td></tr>
+        <tr class="${is3NF ? 'ok-row' : 'violation-row'}"><td>3NF</td><td><span class="${is3NF ? 'badge-pass' : 'badge-fail'}">${is3NF ? '✓ PASS' : '✗ FAIL'}</span></td></tr>
+        <tr class="${isBCNF ? 'ok-row' : 'violation-row'}"><td>BCNF</td><td><span class="${isBCNF ? 'badge-pass' : 'badge-fail'}">${isBCNF ? '✓ PASS' : '✗ FAIL'}</span></td></tr>
+      </tbody>
+    </table>
+    <br>
+    <div class="alert ${isBCNF ? 'alert-success' : 'alert-warning'}">
+      <strong>Conclusion:</strong> The relation <strong>${relName}</strong> is in <strong>${finalNF}</strong>.
+      ${isBCNF
+        ? 'All functional dependency-based redundancy has been eliminated. ✅'
+        : 'Further decomposition is required to reach BCNF.'}
+    </div>
+  `;
+  html += makeStepCard('Final Summary', `<span class="badge-info">${finalNF}</span>`, summaryBody);
+
+  const resultBox = document.getElementById('resultBox');
+  resultBox.innerHTML = `<h5 style="color:#2c3e50; margin-bottom:15px;">📊 Normalization Results — <em>${relName}</em></h5>` + html;
+  resultBox.style.display = 'block';
+  resultBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function clearAll() {
+  document.getElementById('relName').value = '';
+  document.getElementById('attrs').value = '';
+  document.getElementById('primaryKey').value = '';
+  document.getElementById('fds').value = '';
+  document.getElementById('resultBox').style.display = 'none';
+  document.getElementById('resultBox').innerHTML = '';
+  document.getElementById('progressDiv').style.display = 'none';
+  document.getElementById('errorDiv').style.display = 'none';
+}
+
+function loadExample1() {
+  document.getElementById('relName').value = 'STUDENT_COURSE';
+  document.getElementById('attrs').value = 'StudentID, StudentName, CourseID, CourseName, InstructorID, InstructorName, Grade';
+  document.getElementById('primaryKey').value = 'StudentID, CourseID';
+  document.getElementById('fds').value =
+    'StudentID -> StudentName\nCourseID -> CourseName, InstructorID\nInstructorID -> InstructorName\nStudentID, CourseID -> Grade';
+}
+
+function loadExample2() {
+  document.getElementById('relName').value = 'EMP_PROJECT';
+  document.getElementById('attrs').value = 'EmpID, EmpName, Dept, DeptHead, ProjectID, ProjectName, Hours';
+  document.getElementById('primaryKey').value = 'EmpID, ProjectID';
+  document.getElementById('fds').value =
+    'EmpID -> EmpName, Dept\nDept -> DeptHead\nProjectID -> ProjectName\nEmpID, ProjectID -> Hours';
+}
+</script>
+</body>
+</html>
