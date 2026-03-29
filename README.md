@@ -48,7 +48,6 @@ NormFlow is an interactive tool that performs step-by-step database normalizatio
 pip install streamlit
 streamlit run assignment.py
 
----
 
 ## 📸 Preview
 
